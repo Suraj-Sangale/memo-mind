@@ -163,11 +163,11 @@ const CameraSwitcher = () => {
     const codeReader = new BrowserMultiFormatReader();
 
     const captureAndDecode = async () => {
-      console.log("captureAndDecode fun");
+      // console.log("captureAndDecode fun");
       if (webcamRef.current) {
         const imageSrc = webcamRef.current.getScreenshot();
         if (imageSrc) {
-          console.log("imageSrc", imageSrc);
+          // console.log("imageSrc", imageSrc);
           try {
             const result = await codeReader.decodeFromImageUrl(imageSrc);
             if (result.text == sapSku) {
@@ -188,6 +188,7 @@ const CameraSwitcher = () => {
     const interval = setInterval(captureAndDecode, 1000);
     return () => clearInterval(interval);
   }, [isScanning]);
+
 
   return (
     <div className={["alignmentLanding"]}>
@@ -217,7 +218,7 @@ const CameraSwitcher = () => {
                     }}
                     width={450}
                     height={337}
-                    mirrored={isFrontCamera ? true : false}
+                    mirrored={devices.length == 1}
                   />
                 )}
                 {/*  */}
@@ -270,7 +271,7 @@ const CameraSwitcher = () => {
                           onClick={switchCamera}
                           className={["retakeButton"]}
                         >
-                          Switch to {isFrontCamera ? "Back" : "Front"}
+                          Switch to {isFrontCamera ? "Front" : "Back"}
                           Camera
                         </button>
                       )}
