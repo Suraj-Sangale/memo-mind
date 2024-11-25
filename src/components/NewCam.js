@@ -3,7 +3,8 @@ import Webcam from "react-webcam";
 
 const CameraComponent = () => {
   const [devices, setDevices] = useState([]);
-  const [currentDeviceId, setCurrentDeviceId] = useState(null);
+  const [currentDeviceIndex, setCurrentDeviceIndex] = useState(0);
+  const [isFrontCamera, setIsFrontCamera] = useState(false);
   const [capturedImage, setCapturedImage] = useState(null);
   const [error, setError] = useState(null);
   const webcamRef = useRef(null);
@@ -11,18 +12,23 @@ const CameraComponent = () => {
   useEffect(() => {
     const getCameras = async () => {
       try {
-        // Check for available video devices
         const mediaDevices = await navigator.mediaDevices.enumerateDevices();
-        const videoDevices = mediaDevices.filter(
-          (device) => device.kind === "videoinput"
-        );
+        const videoDevices = mediaDevices.filter((device) => device.kind === "videoinput");
 
         if (videoDevices.length === 0) {
           throw new Error("No cameras found on this device.");
         }
 
         setDevices(videoDevices);
-        setCurrentDeviceId(videoDevices[0].deviceId); // Set the first camera as default
+
+        // Default to back camera if two cameras are present
+        if (videoDevices.length > 1) {
+          setCurrentDeviceIndex(1); // Back camera
+          setIsFrontCamera(false);
+        } else {
+          setCurrentDeviceIndex(0); // Single camera
+          setIsFrontCamera(true); // Assume single camera is front
+        }
       } catch (err) {
         setError(err.message || "An error occurred while accessing cameras.");
       }
@@ -31,13 +37,13 @@ const CameraComponent = () => {
     getCameras();
   }, []);
 
-  const startCamera = (deviceId) => {
-    try {
-      setCurrentDeviceId(deviceId);
-      setError(null);
-    } catch (err) {
-      setError("Failed to start the camera.");
-    }
+  const switchCamera = () => {
+    const nextDeviceIndex = (currentDeviceIndex + 1) % devices.length;
+    setCurrentDeviceIndex(nextDeviceIndex);
+
+    // Update isFrontCamera based on the label of the next camera
+    const isNextCameraFront = devices[nextDeviceIndex]?.label.toLowerCase().includes("front");
+    setIsFrontCamera(isNextCameraFront);
   };
 
   const capturePhoto = () => {
@@ -62,40 +68,26 @@ const CameraComponent = () => {
               audio={false}
               ref={webcamRef}
               screenshotFormat="image/jpeg"
-              videoConstraints={
-                devices.length === 1
-                  ? { facingMode: "user" }
-                  : { deviceId: currentDeviceId }
-              }
-              onUserMediaError={(e) => alert(e.message || "Permission denied.")}
-              //   onUserMediaError={(e) => setError(e.message || "Permission denied.")}
+              videoConstraints={{
+                deviceId: devices[currentDeviceIndex]?.deviceId,
+                facingMode: isFrontCamera ? "user" : "environment",
+              }}
+              mirrored={isFrontCamera}
+              onUserMediaError={(e) => setError(e.message || "Permission denied.")}
             />
           )}
           <div className="controls">
             {devices.length > 1 && (
-              <select
-                onChange={(e) => startCamera(e.target.value)}
-                value={currentDeviceId}
-              >
-                {devices.map((device, index) => (
-                  <option
-                    key={index}
-                    value={device.deviceId}
-                  >
-                    {device.label || `Camera ${index + 1}`}
-                  </option>
-                ))}
-              </select>
+              <button onClick={switchCamera}>
+                Switch to {isFrontCamera ? "Back" : "Front"}
+              </button>
             )}
             <button onClick={capturePhoto}>Capture</button>
           </div>
         </>
       ) : (
         <div className="captured-image">
-          <img
-            src={capturedImage}
-            alt="Captured"
-          />
+          <img src={capturedImage} alt="Captured" />
           <button onClick={retakePhoto}>Retake</button>
         </div>
       )}
