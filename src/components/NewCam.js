@@ -37,13 +37,35 @@ const CameraComponent = () => {
     getCameras();
   }, []);
 
-  const switchCamera = () => {
+  const switchCamera = async () => {
     const nextDeviceIndex = (currentDeviceIndex + 1) % devices.length;
     setCurrentDeviceIndex(nextDeviceIndex);
 
     // Update isFrontCamera based on the label of the next camera
     const isNextCameraFront = devices[nextDeviceIndex]?.label.toLowerCase().includes("front");
     setIsFrontCamera(isNextCameraFront);
+
+    // Workaround for Firefox on Android: Restart video stream
+    const nextDeviceId = devices[nextDeviceIndex]?.deviceId;
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          deviceId: nextDeviceId ? { exact: nextDeviceId } : undefined,
+        },
+      });
+
+      // Stop the previous video tracks to release resources
+      if (webcamRef.current?.video?.srcObject) {
+        const tracks = webcamRef.current.video.srcObject.getTracks();
+        tracks.forEach((track) => track.stop());
+      }
+
+      // Assign the new stream to the webcam
+      webcamRef.current.video.srcObject = stream;
+    } catch (err) {
+      setError("Failed to switch camera.");
+    }
   };
 
   const capturePhoto = () => {
